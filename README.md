@@ -45,7 +45,7 @@ app.use(expiry(app, {
   // 'max-age' just the Cache-Control header, max-age value
   // 'expires' just the Expires header
   // 'none' neither the Cache-Control header, max-age value or the Expires header
-  // this is the default when not in prod mode (default when not in prod)
+  // 'none' is the default when not in prod mode
 
   // what conditional headers are set
   conditional: 'both', // both the Last-Modified and ETag header, 
@@ -53,6 +53,7 @@ app.use(expiry(app, {
   // 'last-modified' only the last-modified header
   // 'etag' only the etag header
   // 'none' neither the Last-Modfied or the ETag headers
+  // 'none' is the default when not in prod mode
 
   // the value of the Cache-Control header preceding the max-age value
   // Cache-Control: public, max-age=31556900
@@ -89,13 +90,25 @@ app.use(expiry(app, {
       can still serve the files and static-expiry will ensure the proper caching headers 
       are returned to the CDN.
   */
+
+  // when to load the urlCache and assetCache
+  loadCache: 'startup' // loads the cache upon startup, the default in prod mode.
+  // 'furl' loads cache on an asset by asset basis when furl is called on the asset
+  // 'furl' is the default for development mode
+  /* note that this is necessary in a multiple app server environment as the `furl` 
+     call will not necessarily be called on one of the origin app servers before a request 
+     is made.
+  */
+
+  // create an /expiry GET that outputs the json of the urlCache and the assetCache
+  debug: process.env.NODE_ENV !== production
+  
 }));
 ```
 
 If both conditional and unconditional have a value of none (the default in development), static-expiry is disabled and the `furl` function will not fingerprint the url.  So, you are safe to use the furl function in all modes.  When static-expiry is enabled, the `furl` function (besides generating the fingerprinted URL) will store the asset url argument `furl`, fingerprinted URL, and the cache header data (etag and last-modified).  This is needed by the middleware in order to rewrite the request URL back to the original argument so that the next static middleware can serve the asset.
 
 ## TODO
-  * Allow for option to pre cache files in the static directory as opposed to hydrating the cache asset by asset upon use of the `furl` function.
   * Handle file changes in a production mode either with a file watcher or dynamically looking at the file stats on every request.
   * More granular control of `host` option.  Allow override in individual `furl` call.
   * Allow secondary argument to `furl` that will be used in prod mode only, useful for non-minified/minified assets.

@@ -11,7 +11,8 @@
     "url": "git@github.com:paulwalker/connect-static-expiry.git"
   },
   "dependencies": {
-    "fresh": "*"
+    "fresh": "*",
+    "findit": "*"
   },
   "keywords": [
     "nodejs",
