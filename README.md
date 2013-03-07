@@ -5,7 +5,7 @@
   * A helper method `furl` for your templates in order to generate fingerprinted URLs for your static assets
   * Middleware to handle incoming requests for the fingerprinted URLs.  It handles them by rewriting the url to it's original value and setting appropriate conditional/unconditional cache headers according to your configuration.
 
-It does not serve static assets.  It is invoked by calling it's function that returns the middleware.  It just be placed just before the middleware you use for serving static assets.
+It does not serve static assets.  It is invoked by calling it's function that returns the middleware.  It should be placed just before the middleware you use for serving static assets.
 
 Yes, it's prudent to use a CDN in production.  But you need to generate versioned URLs of some sort in your app and you need an origin to seed the CDN properly (correct cache headers).  That's what static-expiry provides.  It's less of a hassle than configuring a seperate build and deployment to an S3 bucket, imho, and keeps everything self-contained.
 
