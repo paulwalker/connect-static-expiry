@@ -33,31 +33,56 @@ Use the `furl` app local in your templates in order to generate the fingerprinte
   <!-- <link rel="stylesheet" href="/css/a6edcf683bc4df33bb82ae1cca3cf21a-style.css" /> -->
 ```
 
-The function returned takes two argument, the first being the connect/express app (so that the app local can be set) and the second an object of options.  The valid options and their defaults are:
-  * __unconditional__ What unconditional cache headers are set.  Valid values are:
-    * ___'max-age'___ Set the max-age value of the Cache-Control header to 1 year in the future.  Do not set the expire header.
-    * ___'expires'___ Set the Expires header to 1 year in the future.  Do not set the max-age value in the Cache-Control header.
-    * ___'both'___ Set both of the above.  This is the default when `process.env.NODE_ENV === production`
-    * ___'none'___ Do not set either headers.  This is the default when `process.env.NODE_ENV !== production`
-  * __duration__ The duration in seconds of the Cache-Control header max-age value and the Expires header.  Defaults to 31556900 (1 year)
-  * __conditional__ What conditional cache headers are set.  Valid values are:
-    * ___'last-modified'___ Set the Last-Modified header to the mtime value of the asset.  Do not set the ETag header.
-    * ___'etag'___ Set the ETag header to a hash of the asset.  Do not set the ETag header.
-    * ___'both'___ Set both of the above.  This is the default when `process.env.NODE_ENV === production`
-    * ___'none'___ Do not set either headers.  This is the default when `process.env.NODE_ENV !== production`
-  * __cacheControl__ The value of the Cache-Control header (does not control the max-age value).  Valid values are:
-    * ___'public|private'___ A string value to be used for the Cache-Control header
-    * ___'cookieless'___ Sets the Cache-Control header to "public" if there is no cookie, otherwise sets it to private.  This is the default value.
-    * ___''___ Empty string or false if you don't want it set.  Note, that the max-age may still be present.  e.g. `Cache-Control: max-age=31556900`
-  * __dir__ The directory where static assets are stored.  The default value is `path.join(process.env.PWD, 'public')`.
-    I have no idea how reliable the presence of the PWD environment variable is, so it's probably best to set it.
-  * __fingerprint__: The fingerprint function to use.  The first and only argument is the file path to the asset and it should return the fingerprint value.  It defaults to an md5 hash function, pass in your own function here to do something else.
-  * __location__ The location of the fingerprint in the URL.  Valid values are:
-    * ___'prefile'___ Prefixes the filename of the asset with the fingerprint.  This is the default.
-    * ___'postfile'___ Postfixes the filename of the asset with the fingerprint.
-    * ___'query'___ Puts the fingerprint in the query string of the url with the name of `v`
-    * ___'path'___ Prefixes the url with a directory with the name being the value of the fingerprint.  Note that this will be problematic if you are using relative URL references in your CSS files.
-  * __host__ A domain host value to be used for the fingerprinted URL generation.  You can use an array of hosts here and one will be picked by doing a modulus on the time.  If you don't specifiy a scheme, a proto relative scheme will be used.  You will want to use this option if your app servers act as the origin servers for your CDN (like EC2 to Cloudfront).  I find this much easier than using an S3 bucket as the origin.
+The function returned from the require statement takes two argument, the first being the connect/express app (so that the app local can be set) and the second an object of options.  The valid options (defaults uncommented):
+
+```js
+app.use(expiry(app {
+  // the duration in seconds for the Cache-Control header, max-age value and the Expires header
+  duration: 31556900, // 1 year, default when process.env.NODE_ENV === production
+
+  // what undconditional cache headers are set
+  unconditional: 'both', // both the Cache-Control header, max-age value and the Expires header
+  // 'max-age' just the Cache-Control header, max-age value
+  // 'expires' just the Expires header
+  // 'none' neither the Cache-Control header, max-age value or the Expires header (default when not in prod)
+
+  // what conditional headers are set
+  conditional: 'both', // both the Last-Modified and ETag header, default when process.env.NODE_ENV === production
+  // 'last-modified' only the last-modified header
+  // 'etag' only the etag header
+  // 'none' neither the Last-Modfied or the ETag headers
+
+  // the value of the Cache-Control header preceding the max-age value Cache-Control: public, max-age=31556900
+  cacheControl: 'cookieless' // set to 'public' when there is no cookie present, 'private' if there is
+  // 'public' or 'private' set one of these values always
+  // '' or false do not set a value e.g. Cache-Control: max-age=31556900
+
+  // the directory of the static assets
+  dir: path.join(process.env.PWD, 'public')
+  /* I have no idea how reliable the presence of the PWD environment variable is
+     so it's probably best to set this. */
+
+  // the location of the fingerprint in the URL the `furl` generates
+  location: 'prefile' // prefixes the filename of the asset with the fingerprint
+  // 'postfile' postfixes the filename of the asset
+  // 'query' puts the fingerprint in a query string value with the name of `v`
+  // 'path' prefixes the url with a directory with the name of the fingerprint value
+  /*  note that this could be problematic if you are using relative url references in your css/js files
+      but could work if you supply your own function for generating the fingerprint value 
+      and make it static across all assets */
+
+  // a domain host value to be used for the fingerprinted URLs.  may be an array of hosts
+  // in which case one will be picked by doing a modulus on the time
+  host: null
+  // host: ['https://cdn.acme.com', 'cdn2.acme.com'] 
+  // if you don't use a scheme a proto relative scheme will be used e.g. "//cdn2.acme.com/css/main.css"
+  /*  This is what you will use if setting up your app servers as origin servers
+      The fingerprinted URLs will properly point to the CDN host(s) but your app servers
+      can still serve the files and static-expiry will ensure the proper caching headers 
+      are returned to the CDN.
+  */
+}));
+```
 
 If both conditional and unconditional have a value of none (the default in development), expiry is disabled and the furl function will not fingerprint the url.  So, you are safe to use the furl function in all modes.  When expiry is enabled, the furl function (besides generating the fingerprinted URL) will store the asset url argument furl, fingerprinted URL, and the cache header data (etag and last-modified).  This is needed by the middleware in order to rewrite the request URL back to the original argument so that the subsequent static middleware can serve the asset.
 
