@@ -36,7 +36,7 @@ Use the `furl` app local in your templates in order to generate the fingerprinte
 The function returned from the require statement takes two argument, the first being the connect/express app (so that the app local can be set) and the second an object of options.  The valid options (defaults uncommented):
 
 ```js
-app.use(expiry(app {
+app.use(expiry(app, {
   // the duration in seconds for the Cache-Control header, max-age value and the Expires header
   duration: 31556900, // 1 year, default when process.env.NODE_ENV === production
 
@@ -44,39 +44,47 @@ app.use(expiry(app {
   unconditional: 'both', // both the Cache-Control header, max-age value and the Expires header
   // 'max-age' just the Cache-Control header, max-age value
   // 'expires' just the Expires header
-  // 'none' neither the Cache-Control header, max-age value or the Expires header (default when not in prod)
+  // 'none' neither the Cache-Control header, max-age value or the Expires header
+  // this is the default when not in prod mode (default when not in prod)
 
   // what conditional headers are set
-  conditional: 'both', // both the Last-Modified and ETag header, default when process.env.NODE_ENV === production
+  conditional: 'both', // both the Last-Modified and ETag header, 
+  // 'both is the default when process.env.NODE_ENV === production
   // 'last-modified' only the last-modified header
   // 'etag' only the etag header
   // 'none' neither the Last-Modfied or the ETag headers
 
-  // the value of the Cache-Control header preceding the max-age value Cache-Control: public, max-age=31556900
-  cacheControl: 'cookieless' // set to 'public' when there is no cookie present, 'private' if there is
+  // the value of the Cache-Control header preceding the max-age value
+  // Cache-Control: public, max-age=31556900
+  cacheControl: 'cookieless', // set to 'public' when there is no cookie present, 'private' if there is
   // 'public' or 'private' set one of these values always
   // '' or false do not set a value e.g. Cache-Control: max-age=31556900
 
   // the directory of the static assets
-  dir: path.join(process.env.PWD, 'public')
+  dir: path.join(process.env.PWD, 'public'),
   /* I have no idea how reliable the presence of the PWD environment variable is
      so it's probably best to set this. */
 
+  // a function to use to generate the fingerprint
+  // it takes as it's only argument the file path to the asset and should return 
+  // the fingerprint value only, not the url
+  fingerprint: md5 // the default creates an md5 hash of the file contents
+
   // the location of the fingerprint in the URL the `furl` generates
-  location: 'prefile' // prefixes the filename of the asset with the fingerprint
+  location: 'prefile', // prefixes the filename of the asset with the fingerprint
   // 'postfile' postfixes the filename of the asset
   // 'query' puts the fingerprint in a query string value with the name of `v`
   // 'path' prefixes the url with a directory with the name of the fingerprint value
-  /*  note that this could be problematic if you are using relative url references in your css/js files
-      but could work if you supply your own function for generating the fingerprint value 
-      and make it static across all assets */
+  /*  note that 'path' could be problematic if you are using relative url references 
+      in your css/js files but could work if you supply your own function for 
+      generating the fingerprint value and make it static across all assets */
 
   // a domain host value to be used for the fingerprinted URLs.  may be an array of hosts
   // in which case one will be picked by doing a modulus on the time
   host: null
   // host: ['https://cdn.acme.com', 'cdn2.acme.com'] 
   // if you don't use a scheme a proto relative scheme will be used e.g. "//cdn2.acme.com/css/main.css"
-  /*  This is what you will use if setting up your app servers as origin servers
+  /*  This is what you will use if setting up your app servers as origin servers to your CDN.
       The fingerprinted URLs will properly point to the CDN host(s) but your app servers
       can still serve the files and static-expiry will ensure the proper caching headers 
       are returned to the CDN.
@@ -87,7 +95,7 @@ app.use(expiry(app {
 If both conditional and unconditional have a value of none (the default in development), expiry is disabled and the furl function will not fingerprint the url.  So, you are safe to use the furl function in all modes.  When expiry is enabled, the furl function (besides generating the fingerprinted URL) will store the asset url argument furl, fingerprinted URL, and the cache header data (etag and last-modified).  This is needed by the middleware in order to rewrite the request URL back to the original argument so that the subsequent static middleware can serve the asset.
 
 ## TODO
-  * Allow for option to pre cache files in the static directory as opposed to hydrating the cache asset by asset upon use of the furl function.
+  * Allow for option to pre cache files in the static directory as opposed to hydrating the cache asset by asset upon use of the `furl` function.
   * Handle file changes in a production mode either with a file watcher or dynamically looking at the file stats on every request.
   * More granular control of __host__ option.  Allow override in individual `furl` call.
   * Allow secondary argument to `furl` that will be used in prod mode only, useful for non-minified/minified assets.
