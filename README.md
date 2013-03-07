@@ -5,9 +5,9 @@
   * A helper method `furl` for your templates in order to generate fingerprinted URLs for your static assets
   * Middleware to handle incoming requests for the fingerprinted URLs.  It handles them by rewriting the url to it's original value and setting appropriate conditional/unconditional cache headers according to your configuration.
 
-It does not serve static assets.  It is invoked by calling it's function that returns the middleware.
+It does not serve static assets.  It is invoked by calling it's function that returns the middleware.  It just be placed just before the middleware you use for serving static assets.
 
-Yes, it's prudent to use a CDN in production.  But you need an origin for the CDN and app servers are a good choice, imo.  Less hassle than using an S3 bucket for example.
+Yes, it's prudent to use a CDN in production.  But you need to generate versioned URLs of some sort in your app and you need an origin to seed the CDN properly (correct cache headers).  That's what static-expiry provides.  It's less of a hassle than configuring a seperate build and deployment to an S3 bucket, imho, and keeps everything self-contained.
 
 ## Installation
 
@@ -92,12 +92,12 @@ app.use(expiry(app, {
 }));
 ```
 
-If both conditional and unconditional have a value of none (the default in development), expiry is disabled and the furl function will not fingerprint the url.  So, you are safe to use the furl function in all modes.  When expiry is enabled, the furl function (besides generating the fingerprinted URL) will store the asset url argument furl, fingerprinted URL, and the cache header data (etag and last-modified).  This is needed by the middleware in order to rewrite the request URL back to the original argument so that the subsequent static middleware can serve the asset.
+If both conditional and unconditional have a value of none (the default in development), static-expiry is disabled and the `furl` function will not fingerprint the url.  So, you are safe to use the furl function in all modes.  When static-expiry is enabled, the `furl` function (besides generating the fingerprinted URL) will store the asset url argument `furl`, fingerprinted URL, and the cache header data (etag and last-modified).  This is needed by the middleware in order to rewrite the request URL back to the original argument so that the next static middleware can serve the asset.
 
 ## TODO
   * Allow for option to pre cache files in the static directory as opposed to hydrating the cache asset by asset upon use of the `furl` function.
   * Handle file changes in a production mode either with a file watcher or dynamically looking at the file stats on every request.
-  * More granular control of __host__ option.  Allow override in individual `furl` call.
+  * More granular control of `host` option.  Allow override in individual `furl` call.
   * Allow secondary argument to `furl` that will be used in prod mode only, useful for non-minified/minified assets.
 
 ## Credits
