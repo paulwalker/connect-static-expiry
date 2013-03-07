@@ -251,9 +251,13 @@ function expiry(app, options) {
     var f;
     if (options.host) {
       f = util.isArray(options.host) ?
-        function(assetUrl) { 
-          var index = (new Date().getTime()) % options.host.length;
-          return options.host[index] + assetUrl;
+        function(assetUrl) {
+          // use the assetUrl to determine the value to mod so that we get 
+          // consistent host selection for a particular asset across app servers
+          var n = 0;
+          for (var i = 0; i !== assetUrl.length; n += assetUrl.charCodeAt(i++));
+          
+          return options.host[n % options.host.length] + assetUrl;
         } : function(assetUrl) { return options.host + assetUrl; };
     } else {
       f = function(assetUrl) { return assetUrl; };

@@ -7,7 +7,10 @@
 
 It does not serve static assets.  It is invoked by calling it's function that returns the middleware.  It should be placed just before the middleware you use for serving static assets.
 
-Yes, it's prudent to use a CDN in production.  But you need to generate versioned URLs of some sort in your app and you need an origin to seed the CDN properly (correct cache headers).  That's what static-expiry provides.  It's less of a hassle than configuring a seperate build and deployment to an S3 bucket, imho, and keeps everything self-contained.
+**static-expiry** is meant to be everything you need to set up your app servers as origin servers to your CDN.  The two things it provides are key to this: versioned urls and handling the versioned urls.  Of course, you don't have to use a CDN and with **static-expiry** you are still serving static assets using best practices for caching.
+
+## static-expiry's cache
+*static-expiry* uses two lookup cache objects.  One that maps asset urls to the fingerprinted version, so that the function that generates fingerprinted urls only calculates once per asset.  And another that maps the incoming fingerprinted URL to an object that contains the unfingerprinted asset URL, the fingerprint (used for the etag header) and the file stat mtime (used for the last-modified header).  The latter is used by the middleware to rewrite the URL in the `req` object and set the appropriate cache headers.
 
 ## Installation
 
@@ -33,85 +36,121 @@ Use the `furl` app local in your templates in order to generate the fingerprinte
   <!-- <link rel="stylesheet" href="/css/a6edcf683bc4df33bb82ae1cca3cf21a-style.css" /> -->
 ```
 
-The function returned from the require statement takes two argument, the first being the connect/express app (so that the app local can be set) and the second an object of options.  The valid options (defaults uncommented):
+The function returned from the require statement takes two arguments, the first being the connect/express app (so that the app local can be set) and the second an object of options.
+
+## Options
+There are a number of options to control the fingerprinting and middleware.
 
 ```js
 app.use(expiry(app, {
-  // the duration in seconds for the Cache-Control header, max-age value and the Expires header
-  duration: 31556900, // 1 year, default when process.env.NODE_ENV === production
+```
+options are passed in as the second argument
 
-  // what undconditional cache headers are set
-  unconditional: 'both', // both the Cache-Control header, max-age value and the Expires header
-  // 'max-age' just the Cache-Control header, max-age value
-  // 'expires' just the Expires header
-  // 'none' neither the Cache-Control header, max-age value or the Expires header
-  // 'none' is the default when not in prod mode
+### duration
+the duration in seconds for the Cache-Control header, max-age value and the Expires header
 
-  // what conditional headers are set
-  conditional: 'both', // both the Last-Modified and ETag header, 
-  // 'both is the default when process.env.NODE_ENV === production
-  // 'last-modified' only the last-modified header
-  // 'etag' only the etag header
-  // 'none' neither the Last-Modfied or the ETag headers
-  // 'none' is the default when not in prod mode
+```js
+duration: 31556900, // defaults to 1 year
+```
+### unconditional
+what unconditional cache headers to set
 
-  // the value of the Cache-Control header preceding the max-age value
-  // Cache-Control: public, max-age=31556900
-  cacheControl: 'cookieless', // set to 'public' when there is no cookie present, 'private' if there is
-  // 'public' or 'private' set one of these values always
-  // '' or false do not set a value e.g. Cache-Control: max-age=31556900
+```js
+    unconditional: 'both' // default when process.env.NODE_ENV === production
+    /* 
+    unconditional: 'max-age' // just set the Cache-Control header, max-age value
+    unconditional: 'expires' // just set Expires header
+    unconditional: 'none' // do not set either unconditional headers default when not in prod mode */
+```
+### conditional
+what conditional cache headers to set
 
-  // the directory of the static assets
+```js
+  conditional: 'both', // default when process.env.NODE_ENV === production
+  /*
+  conditional: 'last-modified' // only the Last-Modified header
+  conditional: 'etag' // only the ETag header
+  conditional: 'none' // neither the Last-Modfied or the ETag headers */
+```
+### cacheControl
+the value of the Cache-Control header preceding the max-age value
+
+```js
+  cacheControl: 'cookieless', 
+  // set to 'public' when there is no cookie present, 'private' if there is
+```
+any other string value is what will be used always, typically 'public' or 'private'.  use zero length, false, or null to not have a value.  the conditional option may still mean the Cache-Control header will be present however, e.g. `Cache-Control: max-age=31556900`
+
+### dir
+the directory of the static assets
+
+```js
   dir: path.join(process.env.PWD, 'public'),
-  /* I have no idea how reliable the presence of the PWD environment variable is
-     so it's probably best to set this. */
+```
+I have no idea how reliable the presence of the PWD environment variable is, so it's probably best to set this
 
-  // a function to use to generate the fingerprint
-  // it takes as it's only argument the file path to the asset and should return 
-  // the fingerprint value only, not the url
-  fingerprint: md5 // the default creates an md5 hash of the file contents
+### fingerprint
+a function to use to generate the fingerprint
 
-  // the location of the fingerprint in the URL the `furl` generates
+```js
+  fingerprint: md5, // the default creates an md5 hash of the file contents
+```
+the function takes the file path as it's only argument and should return the fingerprint value only (not the fingerprinted url)
+
+### location
+the location of the fingerprint in the URL the `furl` function generates
+
+```js
   location: 'prefile', // prefixes the filename of the asset with the fingerprint
-  // 'postfile' postfixes the filename of the asset
-  // 'query' puts the fingerprint in a query string value with the name of `v`
-  // 'path' prefixes the url with a directory with the name of the fingerprint value
-  /*  note that 'path' could be problematic if you are using relative url references 
-      in your css/js files but could work if you supply your own function for 
-      generating the fingerprint value and make it static across all assets */
+  /*
+  location: 'postfile' // postfixes the filename
+  location: 'query' // puts the fingerprint in a query string value with the name of 'v'
+  location: 'path' // prefixes the url with a directory with the name of the fingerprint value */
+```
+the 'path' option could be problematic if you are using relative url references in your css/js files but could work if you supply your own function for generating the fingerprint value and make it static across all options
 
-  // a domain host value to be used for the fingerprinted URLs.  may be an array of hosts
-  // in which case one will be picked by doing a modulus on the time
-  host: null
-  // host: ['https://cdn.acme.com', 'cdn2.acme.com'] 
-  // if you don't use a scheme a proto relative scheme will be used e.g. "//cdn2.acme.com/css/main.css"
-  /*  This is what you will use if setting up your app servers as origin servers to your CDN.
-      The fingerprinted URLs will properly point to the CDN host(s) but your app servers
-      can still serve the files and static-expiry will ensure the proper caching headers 
-      are returned to the CDN.
+### host
+a domain host value to be used for the fingerprinted URLs.
+
+```js  
+  host: null,
+  /* 
+    host: 'cdn.acme.com'
+    // if you don't use a scheme a proto relative scheme will be used e.g. `"//cdn2.acme.com/css/main.css"`.
+    host: ['cd1.acme.com', 'https://cdn2.acme.com']
   */
+```
+If you use multiple hosts, the one selected is based upon a modulus of the sum of the character codes in the asset URL so that the same host is generated consistently across app servers.
 
-  // when to load the urlCache and assetCache
-  loadCache: 'startup' // loads the cache upon startup, the default in prod mode.
-  // 'furl' loads cache on an asset by asset basis when furl is called on the asset
-  // 'furl' is the default for development mode
-  /* note that this is necessary in a multiple app server environment as the `furl` 
-     call will not necessarily be called on one of the origin app servers before a request 
-     is made.
-  */
+This option is what you will use if setting up your app servers as origin servers to your CDN.  The fingerprinted URLs will then properly point to the CDN host(s) but your app servers can still serve the files with the caching strategy you have configured or defaulting to.
 
-  // create an /expiry GET that outputs the json of the urlCache and the assetCache
+### loadCache
+when to load the urlCache and assetCache
+
+```js
+  loadCache: 'startup' // loads the cache upon startup, the default in prod mode
+  // loadCache: 'furl' // loads the cache on an asset by asset basis when furl is invoked
+  // the default when not in prod mode
+```
+the 'startup' value is necessary in a multiple server environment as it is possible for a fingerprinted request to come into a particular server before it has generated a fingerprinted URL for that asset itself.  
+(i may work a way around this in the future, not too hard to reverse engineer the asset from the fingerprinted url)
+
+### debug
+create a GET /expiry route that outputs the json of the urlCache and assetCache
+
+```js
   debug: process.env.NODE_ENV !== production
-  
 }));
 ```
 
-If both conditional and unconditional have a value of none (the default in development), static-expiry is disabled and the `furl` function will not fingerprint the url.  So, you are safe to use the furl function in all modes.  When static-expiry is enabled, the `furl` function (besides generating the fingerprinted URL) will store the asset url argument `furl`, fingerprinted URL, and the cache header data (etag and last-modified).  This is needed by the middleware in order to rewrite the request URL back to the original argument so that the next static middleware can serve the asset.
+## Enabled vs Disabled (production vs development/test)
+If both conditional and unconditional have a value of none (the default in development), static-expiry is disabled and the `furl` function will not fingerprint the url.  So, you are safe to use the furl function in all modes.
 
 ## TODO
   * Handle file changes in a production mode either with a file watcher or dynamically looking at the file stats on every request.
   * More granular control of `host` option.  Allow override in individual `furl` call.
   * Allow secondary argument to `furl` that will be used in prod mode only, useful for non-minified/minified assets.
+  * Add ability to reconfigure at runtime, just because we can
 
 ## Credits
  The inspiration for this project goes to bminer for https://github.com/bminer/node-static-asset
