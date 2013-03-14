@@ -1,0 +1,5 @@
+--require should
+--growl
+--ui bdd
+--reporter spec
+--ignore-leaks
