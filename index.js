@@ -18,22 +18,39 @@ var crypto = require('crypto')
   , util = require('util')
   , fresh = require('fresh')
   , findit = require('findit')
-  , isProd = process.env.NODE_ENV === 'production'
+  , isDev = process.env.NODE_ENV === 'development'
   , defaults = {
-      // max-age, expires, both, none
-      unconditional: isProd ? 'both' : 'none',
+      unconditional: isDev ? 'none' : 'both',
       duration: 31556900,
-      // last-modified, etag, both, none
-      conditional: isProd ? 'both' : 'none',
+      conditional: isDev ? 'none' : 'both',
       cacheControl: 'cookieless',
       dir: path.join(process.env.PWD, 'public'),
       fingerprint: md5,
       location: 'prefile',
-      loadCache: isProd ? 'startup' : 'furl',
-      debug: true
+      loadCache: isDev ? 'furl' : 'startup',
+      host: null,
+      useSecond: !isDev,
+      debug: isDev
     };
 
 exports = module.exports = expiry;
+
+exports.options = {};
+/**
+ * Set the options
+ *
+ * @api private
+ */
+exports.setOptions = function(opts) {
+  for (var opt in defaults) {
+    this.options[opt] = opts[opt] || defaults[opt];
+  }
+
+  this.options.enabled = 
+    this.options.unconditional !== 'none' || this.options.conditional !== 'none';
+
+  if (this.options.host) this.options.host = normalizeHost(this.options.host);
+};
 
 /**
  * lookup for fingerprinted URLS
@@ -54,7 +71,10 @@ exports.urlCache = {};
  */
 exports.assetCache = {};
 
-
+exports.clearCache = function() {
+  this.urlCache = {};
+  this.assetCache = {};
+}
 /**
  * Returns the md5 hash of a file
  *
@@ -84,30 +104,6 @@ function normalizeHost(host) {
   return host;
 };
 
-/**
- * Parse out the options
- *
- * @api private
- */
-function parseOpts(opts) {
-  [ 'unconditional',
-    'duration',
-    'conditional',
-    'cacheControl',
-    'dir',
-    'fingerprint',
-    'location',
-    'loadCache',
-    'debug'
-    ].forEach(function(i) {
-    if (!opts[i]) opts[i] = defaults[i];
-  });
-  opts.enabled = opts.unconditional !== 'none' || opts.conditional !== 'none';
-
-  if (opts.host) opts.host = normalizeHost(opts.host)
-
-  return opts;
-};
 
 /**
  * Iterates through the files in the static directory and pre caches the fingerprints 
@@ -124,8 +120,23 @@ function preCache() {
   });
 
   for (var i = 0; i !== files.length; i ++) {
-    fingerprintAssetUrl(files[i].substr(options.dir.length));
+    var file = files[i]
+      , urlCacheKey = file.substr(options.dir.length);
+
+    expiry.urlCache[urlCacheKey] = fingerprintAssetUrl(urlCacheKey);
   }
+};
+
+/**
+ * Renders the urlCache and assetCache values
+ *
+ * @api private
+ */
+function expiryGet(req, res) {
+  var json = { urlCache: expiry.urlCache, assetCache: expiry.assetCache }
+    , body = JSON.stringify(json, undefined, 2);
+  res.set('Content-Type', 'text/plain');
+  res.send(body);
 };
 
 /**
@@ -136,10 +147,11 @@ function preCache() {
  */
 function fingerprintAssetUrl(assetUrl) {
   var options = expiry.options
-    , parsed = (typeof assetUrl === 'string') ? url.parse(assetUrl, true, true) : assetUrl
-    , urlCacheKey = parsed.pathname
-    , filePath = path.join(options.dir, parsed.pathname)
-    , fingerprint;
+    , parsedUrl = (typeof assetUrl === 'string') ? url.parse(assetUrl, true, true) : assetUrl
+    , urlCacheKey = parsedUrl.path
+    , filePath = path.join(options.dir, parsedUrl.pathname)
+    , fingerprint
+    , fingerprintedUrl;
 
   try {
     fingerprint = options.fingerprint(filePath);
@@ -151,37 +163,68 @@ function fingerprintAssetUrl(assetUrl) {
 
   switch (options.location) {
     case 'prefile':
-      parsed.pathname = path.join(path.dirname(parsed.pathname),
-        fingerprint + '-' + path.basename(parsed.pathname));
+      parsedUrl.pathname = path.join(path.dirname(parsedUrl.pathname),
+        fingerprint + '-' + path.basename(parsedUrl.pathname));
       break;
     case 'postfile':
-      var filename = path.basename(parsed.pathname)
+      var filename = path.basename(parsedUrl.pathname)
         , ext = path.extname(filename);
-      parsed.pathname = path.join(path.dirname(parsed.pathname),
+      parsedUrl.pathname = path.join(path.dirname(parsedUrl.pathname),
         filename.slice(0, -ext.length) + '-' + fingerprint + ext);
       break;
     case 'query':
-      parsed.query['v'] = fingerprint;
+      parsedUrl.query['v'] = fingerprint;
       break;
     case 'path':
-      parsed.pathname = path.join('/', fingerprint, parsed.pathname);
+      parsedUrl.pathname = path.join('/', fingerprint, parsedUrl.pathname);
       break;
   }
 
-  fingerprintedUrl = url.format(parsed);
-  assetUrl = parsed.path;
-  parsed = url.parse(fingerprintedUrl, false, true);
+  if (!parsedUrl.host && options.host) {
+    var host = options.host
+      , parsedHost;
+    if (util.isArray(host)) {
+      for (var i = 0, n = 0; i !== urlCacheKey.length; n += urlCacheKey.charCodeAt(i++));
+      host = host[n % host.length];
+    }
+    parsedHost = url.parse(host, false, true);
+    parsedUrl.protocol = parsedHost.protocol;
+    parsedUrl.host = parsedHost.host;
+  }
+
+  fingerprintedUrl = url.format(parsedUrl);
+  assetUrl = parsedUrl.path;
+  parsedUrl = url.parse(fingerprintedUrl, false, true);
 
   // store the header caching values in a lookup hash
   // the middleware needs this to rewrite the url
-  expiry.assetCache[parsed.path] = { 
+  expiry.assetCache[parsedUrl.path] = { 
     etag : fingerprint, 
     lastModified : fs.statSync(filePath).mtime.toUTCString(),
     assetUrl : assetUrl
   };
 
   // return Fingerprinted URL and store it in a lookup hash
-  return expiry.urlCache[urlCacheKey] = fingerprintedUrl;
+  return fingerprintedUrl;
+};
+
+/**
+ * Local helper method to generate fingerprinted URLs
+ *
+ * @api private
+ */
+function furl(assetUrl, prodAssetUrl) {
+  if (expiry.options.useSecond && prodAssetUrl) assetUrl = prodAssetUrl;
+  if (!expiry.options.enabled) return assetUrl;
+  var parsedUrl = url.parse(assetUrl, true, true)
+    , urlCacheKey = parsedUrl.path
+    , fingerprintedUrl = expiry.urlCache[urlCacheKey];
+
+  if (!fingerprintedUrl) {
+    fingerprintedUrl = expiry.urlCache[urlCacheKey] = fingerprintAssetUrl(parsedUrl);
+  }
+
+  return fingerprintedUrl;
 };
 
 /**
@@ -234,44 +277,11 @@ function middleware(req, res, next) {
  * @api public
  */
 function expiry(app, options) {
-  var options = expiry.options = parseOpts(options || {});
+  expiry.setOptions(options || {});
 
-  if (options.loadCache === 'startup') {
-    preCache();
-  }
-
-  if (options.debug) {
-    app.get('/expiry', function(req, res) {
-      res.json({ urlCache: expiry.urlCache, assetCache: expiry.assetCache });
-    });
-  }
-  // certain logic only needs to be checked once, 
-  // so let's dynamically create the `furl` function
-  app.locals.furl = (function() {
-    var f;
-    if (options.host) {
-      f = util.isArray(options.host) ?
-        function(assetUrl) {
-          // use the assetUrl to determine the value to mod so that we get 
-          // consistent host selection for a particular asset across app servers
-          var n = 0;
-          for (var i = 0; i !== assetUrl.length; n += assetUrl.charCodeAt(i++));
-          
-          return options.host[n % options.host.length] + assetUrl;
-        } : function(assetUrl) { return options.host + assetUrl; };
-    } else {
-      f = function(assetUrl) { return assetUrl; };
-    }
-
-    if (!options.enabled) return f;
-
-    return function(assetUrl) {
-      assetUrl = f(assetUrl);
-      var parsed = url.parse(assetUrl, true, true);
-
-      return expiry.urlCache[parsed.pathname] || fingerprintAssetUrl(parsed);
-    };
-  })();
+  if (expiry.options.loadCache === 'startup') preCache();
+  if (expiry.options.debug) app.get('/expiry', expiryGet);
+  app.locals.furl = furl;
 
   return middleware;
 };

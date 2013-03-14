@@ -29,14 +29,19 @@ app.use(express.static(staticDir));
 app.listen(3000);
 ```
 
+The function returned from the require statement takes two arguments, the first being the connect/express app (so that the app local can be set) and the second an object of options.
+
+## furl helper
 Use the `furl` app local in your templates in order to generate the fingerprinted URL.
 
 ```html
   <link rel="stylesheet" href="{{ furl('/css/style.css') }}" />
   <!-- <link rel="stylesheet" href="/css/a6edcf683bc4df33bb82ae1cca3cf21a-style.css" /> -->
-```
 
-The function returned from the require statement takes two arguments, the first being the connect/express app (so that the app local can be set) and the second an object of options.
+  <link rel="stylesheet" href="{{ furl('/css/style.css', '/css/style.min.css') }}" />
+  <!-- <link rel="stylesheet" href="/css/a6edcf683bc4df33bb82ae1cca3cf21a-style.min.css" /> -->
+```
+The second argument will be used when the NODE_ENV is not development.
 
 ## Options
 There are a number of options to control the fingerprinting and middleware.
@@ -56,21 +61,21 @@ duration: 31556900, // defaults to 1 year
 what unconditional cache headers to set
 
 ```js
-    unconditional: 'both' // default when process.env.NODE_ENV === production
+    unconditional: 'both' // default when process.env.NODE_ENV !== 'development'
     /* 
     unconditional: 'max-age' // just set the Cache-Control header, max-age value
     unconditional: 'expires' // just set Expires header
-    unconditional: 'none' // do not set either unconditional headers default when not in prod mode */
+    unconditional: 'none' // do not set either unconditional headers, default when in dev mode */
 ```
 ### conditional
 what conditional cache headers to set
 
 ```js
-  conditional: 'both', // default when process.env.NODE_ENV === production
+  conditional: 'both', // default when process.env.NODE_ENV !== 'development'
   /*
   conditional: 'last-modified' // only the Last-Modified header
   conditional: 'etag' // only the ETag header
-  conditional: 'none' // neither the Last-Modfied or the ETag headers */
+  conditional: 'none' // neither the Last-Modfied or the ETag headers, default when in dev mode */
 ```
 ### cacheControl
 the value of the Cache-Control header preceding the max-age value
@@ -107,7 +112,7 @@ the location of the fingerprint in the URL the `furl` function generates
   location: 'query' // puts the fingerprint in a query string value with the name of 'v'
   location: 'path' // prefixes the url with a directory with the name of the fingerprint value */
 ```
-the 'path' option could be problematic if you are using relative url references in your css/js files but could work if you supply your own function for generating the fingerprint value and make it static across all options
+the 'path' option could be problematic if you are using relative url references in your css/js files but could work if you supply your own function for generating the fingerprint value and make it static across all assets
 
 ### host
 a domain host value to be used for the fingerprinted URLs.
@@ -139,18 +144,15 @@ the 'startup' value is necessary in a multiple server environment as it is possi
 create a GET /expiry route that outputs the json of the urlCache and assetCache
 
 ```js
-  debug: process.env.NODE_ENV !== production
+  debug: process.env.NODE_ENV === 'development'
 }));
 ```
 
-## Enabled vs Disabled (production vs development/test)
-If both conditional and unconditional have a value of none (the default in development), static-expiry is disabled and the `furl` function will not fingerprint the url.  So, you are safe to use the furl function in all modes.
+## Enabled vs Disabled (!development vs development)
+If both conditional and unconditional have a value of none (the default in development), static-expiry is disabled and the `furl` function will not fingerprint the url.
 
 ## TODO
   * Handle file changes in a production mode either with a file watcher or dynamically looking at the file stats on every request.
-  * More granular control of `host` option.  Allow override in individual `furl` call.
-  * Allow secondary argument to `furl` that will be used in prod mode only, useful for non-minified/minified assets.
-  * Add ability to reconfigure at runtime, just because we can
 
 ## Credits
  The inspiration for this project goes to bminer for https://github.com/bminer/node-static-asset
