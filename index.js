@@ -116,7 +116,7 @@ function preCache() {
     , files = [];
 
   findit.sync(options.dir, {}, function(file, stat) {
-    if (stat.blocks !== 0) files.push(file);
+    if (stat.isFile()) files.push(file);
   });
 
   for (var i = 0; i !== files.length; i ++) {
