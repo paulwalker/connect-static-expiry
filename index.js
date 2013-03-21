@@ -113,10 +113,14 @@ function normalizeHost(host) {
  */
 function preCache() {
   var options = expiry.options
-    , files = [];
+    , loadOptions = (typeof expiry.options.loadCache === 'object') ? 
+        expiry.options.loadCache : {};
 
   findit.sync(options.dir, {}, function(file, stat) {
-    if (stat.isFile()) files.push(file);
+    if (stat.isFile() && 
+      (typeof loadOptions.callback !== 'function' || loadOptions.callback(file, stat))) {
+        files.push(file);
+    }
   });
 
   for (var i = 0; i !== files.length; i ++) {
@@ -278,9 +282,13 @@ function middleware(req, res, next) {
  */
 function expiry(app, options) {
   expiry.setOptions(options || {});
+  options = expiry.options;
 
-  if (expiry.options.loadCache === 'startup') preCache();
-  if (expiry.options.debug) app.get('/expiry', expiryGet);
+  if (options.loadCache === 'startup' || 
+    (typeof options.loadCache === 'object' && options.loadCache.at === 'startup')) {
+    preCache();
+  }
+  if (options.debug) app.get('/expiry', expiryGet);
   app.locals.furl = furl;
 
   return middleware;

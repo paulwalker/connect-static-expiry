@@ -136,6 +136,11 @@ when to load the urlCache and assetCache
   loadCache: 'startup' // loads the cache upon startup, the default in prod mode
   // loadCache: 'furl' // loads the cache on an asset by asset basis when furl is invoked
   // the default when not in prod mode
+  /* 
+    loadCache: { at: 'startup', callback: function(file, stat) { /foo/.test(file); } }
+    you can pass an object in with a callback function in order to filter files
+    by name (file) or fs.Stats (stat).  this only works with the 'startup' mode.
+  */
 ```
 the 'startup' value is necessary in a multiple server environment as it is possible for a fingerprinted request to come into a particular server before it has generated a fingerprinted URL for that asset itself.  
 (i may work a way around this in the future, not too hard to reverse engineer the asset from the fingerprinted url)
