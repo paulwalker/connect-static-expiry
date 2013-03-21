@@ -113,13 +113,13 @@ function normalizeHost(host) {
  */
 function preCache() {
   var options = expiry.options
-    , loadOptions = (typeof expiry.options.loadCache === 'object') ? 
-        expiry.options.loadCache : {};
+    , callback = (typeof options.loadCache === 'object' && 
+        typeof options.loadCache.callback !== 'function') ? 
+        options.loadCache.callback : false;
 
   findit.sync(options.dir, {}, function(file, stat) {
-    if (stat.isFile() && 
-      (typeof loadOptions.callback !== 'function' || loadOptions.callback(file, stat))) {
-        files.push(file);
+    if (stat.isFile() && (!callback || callback(file, stat))) {
+      files.push(file);
     }
   });
 
