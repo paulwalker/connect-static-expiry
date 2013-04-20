@@ -113,6 +113,7 @@ function normalizeHost(host) {
  */
 function preCache() {
   var options = expiry.options
+    , files = []
     , callback = (typeof options.loadCache === 'object' && 
         typeof options.loadCache.callback !== 'function') ? 
         options.loadCache.callback : false;
@@ -234,7 +235,7 @@ function furl(assetUrl, prodAssetUrl) {
 /**
  * Middleware that is returned with public expiry call.
  * Looks up incoming request url in lookup hash and, if found, 
- * sets cache headers accoroding to settings
+ * sets cache headers according to settings
  *
  * @api private
  */
@@ -243,7 +244,8 @@ function middleware(req, res, next) {
     , options = expiry.options;
 
   if (headerInfo) {
-    var cacheControl = (options.cacheControl === 'cookieless' && req.get('cookie')) ?
+    var cacheControl = (options.cacheControl === 'cookieless' && 
+      (req.get('cookie') || req.get('authorization'))) ?
           'private' : options.cacheControl || '';
 
     if (options.unconditional === 'both' || options.unconditional === 'max-age') {
@@ -263,6 +265,8 @@ function middleware(req, res, next) {
     }
     if (cacheControl.length) res.set({ 'Cache-Control' : cacheControl });
 
+    // TODO: fresh module should return false if Cache-Control: no-cache is in request
+    // if ((req.get('Cache-Control') && req.get('Cache-Control') { test no-cache value }, etc...)
     if (fresh(req, res)) return res.send(304);
 
     req.originalUrl = req.url;
