@@ -24,7 +24,7 @@ var crypto = require('crypto')
       duration: 31556900,
       conditional: isDev ? 'none' : 'both',
       cacheControl: 'cookieless',
-      dir: path.join(process.env.PWD, 'public'),
+      dir: process.cwd() + '/public',
       fingerprint: md5,
       location: 'prefile',
       loadCache: isDev ? 'furl' : 'startup',
@@ -154,7 +154,7 @@ function fingerprintAssetUrl(assetUrl) {
   var options = expiry.options
     , parsedUrl = (typeof assetUrl === 'string') ? url.parse(assetUrl, true, true) : assetUrl
     , urlCacheKey = parsedUrl.path
-    , filePath = path.join(options.dir, parsedUrl.pathname)
+    , filePath = options.dir + '/' + parsedUrl.pathname
     , fingerprint
     , fingerprintedUrl;
 
@@ -168,20 +168,20 @@ function fingerprintAssetUrl(assetUrl) {
 
   switch (options.location) {
     case 'prefile':
-      parsedUrl.pathname = path.join(path.dirname(parsedUrl.pathname),
-        fingerprint + '-' + path.basename(parsedUrl.pathname));
+      parsedUrl.pathname = path.dirname(parsedUrl.pathname).replace(/\/$/, '') + '/' +
+        fingerprint + '-' + path.basename(parsedUrl.pathname);
       break;
     case 'postfile':
       var filename = path.basename(parsedUrl.pathname)
         , ext = path.extname(filename);
-      parsedUrl.pathname = path.join(path.dirname(parsedUrl.pathname),
-        filename.slice(0, -ext.length) + '-' + fingerprint + ext);
+      parsedUrl.pathname = path.dirname(parsedUrl.pathname).replace(/\/$/, '') + '/' +
+        filename.slice(0, -ext.length) + '-' + fingerprint + ext;
       break;
     case 'query':
       parsedUrl.query['v'] = fingerprint;
       break;
     case 'path':
-      parsedUrl.pathname = path.join('/', fingerprint, parsedUrl.pathname);
+      parsedUrl.pathname = '/' + fingerprint + parsedUrl.pathname;
       break;
   }
 
