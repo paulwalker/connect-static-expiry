@@ -24,7 +24,7 @@ var crypto = require('crypto')
       duration: 31556900,
       conditional: isDev ? 'none' : 'both',
       cacheControl: 'cookieless',
-      dir: path.join(process.env.PWD, 'public'),
+      dir: process.cwd() + '/public',
       fingerprint: md5,
       location: 'prefile',
       loadCache: isDev ? 'furl' : 'startup',
