@@ -43,7 +43,7 @@ exports.options = {};
  */
 exports.setOptions = function(opts) {
   for (var opt in defaults) {
-    this.options[opt] = opts[opt] || defaults[opt];
+    this.options[opt] = opts[opt] === undefined ? defaults[opt] : opts[opt];
   }
 
   this.options.enabled = 
