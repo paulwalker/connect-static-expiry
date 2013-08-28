@@ -265,8 +265,6 @@ function middleware(req, res, next) {
     }
     if (cacheControl.length) res.set({ 'Cache-Control' : cacheControl });
 
-    // TODO: fresh module should return false if Cache-Control: no-cache is in request
-    // if ((req.get('Cache-Control') && req.get('Cache-Control') { test no-cache value }, etc...)
     if (fresh(req, res)) return res.send(304);
 
     req.originalUrl = req.url;

@@ -5,7 +5,7 @@
   * A helper method `furl` for your templates in order to generate fingerprinted URLs for your static assets
   * Middleware to handle incoming requests for the fingerprinted URLs.  It handles them by rewriting the url to it's original value and setting appropriate conditional/unconditional cache headers according to your configuration.
 
-It does not serve static assets.  It is invoked by calling it's function that returns the middleware.  It should be placed just before the middleware you use for serving static assets.
+*static-expiry* does not serve static assets.  It is invoked by calling it's function that returns the middleware.  It should be placed just before the middleware you use for serving static assets.
 
 **static-expiry** is meant to be everything you need to set up your app servers as origin servers to your CDN.  The two things it provides are key to this: versioned urls and handling the versioned urls.  Of course, you don't have to use a CDN and with **static-expiry** you are still serving static assets using best practices for caching.
 
