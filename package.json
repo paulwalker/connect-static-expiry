@@ -1,6 +1,6 @@
 {
   "name": "static-expiry",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "Connect middleware for static files that sets caching response headers as well as generates and rewrites fingerprinted urls.",
   "keywords": ["nodejs", "connect", "middleware", "static", "caching", "http", "fingerprint", "fingerprinting", "urls"],
   "license": "MIT",
@@ -13,8 +13,8 @@
   },
   "author": "Paul Walker",
   "dependencies": {
-    "fresh": "*",
-    "findit": "*"
+    "fresh": "0.1.0",
+    "findit": "0.1.2"
   },
   "devDependencies": {
     "should": "*",
