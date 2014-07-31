@@ -166,10 +166,11 @@ function fingerprintAssetUrl(assetUrl) {
       break;
     } catch(e) {
       // file not found
-      if (e.code && e.code === 'ENOENT' && i === length - 1) {
+      if (!e.code || e.code !== 'ENOENT') {
+        throw e;
+      } else if (i === length - 1) {
         return assetUrl;
       }
-      throw e;
     }
   }
 
