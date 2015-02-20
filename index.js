@@ -113,23 +113,21 @@ function normalizeHost(host) {
  */
 function preCache() {
   var options = expiry.options
-    , files = []
+    , dir = Array.isArray(options.dir) ? options.dir : [options.dir]
     , callback = (typeof options.loadCache === 'object' && 
         typeof options.loadCache.callback !== 'function') ? 
         options.loadCache.callback : false;
 
-  findit.sync(options.dir, {}, function(file, stat) {
-    if (stat.isFile() && (!callback || callback(file, stat))) {
-      files.push(file);
-    }
+  dir.forEach(function (dir) {
+    findit.sync(dir, {}, function(file, stat) {
+      if (stat.isFile() && (!callback || callback(file, stat))) {
+        var urlCacheKey = file.substr(dir.length);
+        if (!expiry.urlCache[urlCacheKey]) {
+          expiry.urlCache[urlCacheKey] = fingerprintAssetUrl(urlCacheKey);
+        }
+      }
+    });
   });
-
-  for (var i = 0; i !== files.length; i ++) {
-    var file = files[i]
-      , urlCacheKey = file.substr(options.dir.length);
-
-    expiry.urlCache[urlCacheKey] = fingerprintAssetUrl(urlCacheKey);
-  }
 };
 
 /**
@@ -154,16 +152,26 @@ function fingerprintAssetUrl(assetUrl) {
   var options = expiry.options
     , parsedUrl = (typeof assetUrl === 'string') ? url.parse(assetUrl, true, true) : assetUrl
     , urlCacheKey = parsedUrl.path
-    , filePath = options.dir + '/' + parsedUrl.pathname
+    , dir = Array.isArray(options.dir) ? options.dir : [options.dir]
+    , i
+    , length
+    , filePath
     , fingerprint
     , fingerprintedUrl;
 
-  try {
-    fingerprint = options.fingerprint(filePath);
-  } catch(e) {
-    // file not found
-    if (e.code && e.code === 'ENOENT') return assetUrl;
-    throw e;
+  for (i = 0, length = dir.length; i < length; i++) {
+    try {
+      filePath = dir[i] + '/' + parsedUrl.pathname;
+      fingerprint = options.fingerprint(filePath);
+      break;
+    } catch(e) {
+      // file not found
+      if (!e.code || e.code !== 'ENOENT') {
+        throw e;
+      } else if (i === length - 1) {
+        return assetUrl;
+      }
+    }
   }
 
   switch (options.location) {
