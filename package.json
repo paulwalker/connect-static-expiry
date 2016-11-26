@@ -13,8 +13,10 @@
   },
   "author": "Paul Walker",
   "dependencies": {
-    "fresh": "0.3.0",
-    "findit": "0.1.2"
+    "@types/connect": "^3.4.30",
+    "@types/node": "^6.0.51",
+    "findit": "0.1.2",
+    "fresh": "0.3.0"
   },
   "devDependencies": {
     "connect": "3.x.x",
@@ -23,6 +25,7 @@
     "supertest": "^2.0.1"
   },
   "main": "index",
+  "typings": "index.d.ts",
   "engines": {
     "node": ">=4.x.x"
   }
