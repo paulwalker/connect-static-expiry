@@ -17,8 +17,10 @@
     "findit": "0.1.2"
   },
   "devDependencies": {
+    "connect": "3.x.x",
     "mocha": "3.x.x",
-    "should": "11.x.x"
+    "should": "11.x.x",
+    "supertest": "^2.0.1"
   },
   "main": "index",
   "engines": {

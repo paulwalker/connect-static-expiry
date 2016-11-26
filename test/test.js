@@ -1,7 +1,9 @@
-var expiry = require('../')
+var connect = require("connect")
+  , request = require("supertest")
+  , expiry = require('../')
   , path = require('path')
   , util = require('util')
-  , options = { dir: path.join(__dirname, 'fixtures'), loadCache: 'furl' }
+  , options = { dir: path.join(__dirname, 'fixtures'), loadCache: 'startup' }
   , getHash = function(filePath) {
       return require('crypto').createHash('md5').
         update(require('fs').readFileSync(filePath)).digest('hex')
@@ -67,5 +69,53 @@ describe('furl', function() {
     var result = app.locals.furl('http://cdn2.acme.com/styles.css');
     result.should.equal(util.format('http://cdn2.acme.com/%s-styles.css', stylesHash));
   });
+});
 
+describe("middleware", function() {
+  var app;
+  var headerExists = function(res, header) {
+    return res.headers[header] !== undefined;
+  };
+
+  beforeEach(function() {
+    app = connect();
+    app.use(expiry(app, options));
+    app.use(function(req, res, next) {
+      res.end("pretending to serve file: " + req.url);
+    });
+  });
+
+  afterEach(function() {
+    expiry.clearCache();
+    expiry.setOptions(options);
+  });
+
+  describe("cache headers", function() {
+    it("sets an expires and cache-control header for unconditional: both", function() {
+      expiry.options.unconditional = "both";
+
+      return request(app)
+        .get(util.format('/%s-styles.css', stylesHash))
+        .expect(function(res) {
+          if(!headerExists(res, "expires"))
+            throw new Error("Expires header expected");
+        })
+        .expect("Cache-Control", new RegExp("max-age=" + expiry.options.duration));
+    });
+
+    it("doesn't set an expires or max-age for unconditional: none", function() {
+      expiry.options.unconditional = "none";
+
+      return request(app)
+        .get(util.format('/%s-styles.css', stylesHash))
+        .expect(function(res) {
+          var unexpectedExpires = headerExists(res, "expires");
+          var unexpectedMaxAge = res.headers["cache-control"] &&
+            res.headers["cache-control"].indexOf("max-age") > -1;
+
+          if(unexpectedExpires || unexpectedMaxAge)
+            throw new Error("Unexpected caching header");
+        });
+    });
+  });
 });
