@@ -13,7 +13,7 @@
   },
   "author": "Paul Walker",
   "dependencies": {
-    "fresh": "0.1.0",
+    "fresh": "0.3.0",
     "findit": "0.1.2"
   },
   "devDependencies": {
