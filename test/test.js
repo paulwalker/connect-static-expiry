@@ -53,7 +53,7 @@ describe('furl', function() {
   it('uses the second argument when in prod mode', function() {
     expiry.options.useSecond = true;
     var result = app.locals.furl('/styles.css', '/styles.min.css');
-    result.should.include('styles.min.css');
+    result.should.containEql('styles.min.css');
   });
 
   it('uses a host', function() {
