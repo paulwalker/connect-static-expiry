@@ -278,7 +278,9 @@ function middleware(req, res, next) {
     }
     if (cacheControl.length) res.setHeader('Cache-Control', cacheControl);
 
-    if (fresh(req, res)) return res.send(304);
+    if (fresh(req.headers, (res._headers || {}))) {
+      return res.send(304);
+    }
 
     req.originalUrl = req.url;
     req.url = headerInfo.assetUrl;
