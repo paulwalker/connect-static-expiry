@@ -252,9 +252,14 @@ function middleware(req, res, next) {
     , options = expiry.options;
 
   if (headerInfo) {
-    var cacheControl = (options.cacheControl === 'cookieless' &&
-      (req.headers.cookie || req.headers.authorization)) ?
-          'private' : options.cacheControl || '';
+    var cacheControl = options.cacheControl || '';
+
+    // Treat cookieless as a special value where we switch
+    // between public and private based on presence of a cookie.
+    if(cacheControl === 'cookieless') {
+      cacheControl = (req.headers.cookie || req.headers.authorization) ?
+          'private' : 'public';
+    }
 
     if (options.unconditional === 'both' || options.unconditional === 'max-age') {
       if (cacheControl.length) cacheControl += ', ';

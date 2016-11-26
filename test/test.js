@@ -117,5 +117,20 @@ describe("middleware", function() {
             throw new Error("Unexpected caching header");
         });
     });
+
+    it("sets cache-control to public or private dynamically when cacheControl: cookieless", function() {
+      return Promise.all([
+        // The no-cookie version returns cache-control public.
+        request(app)
+        .get(util.format('/%s-styles.css', stylesHash))
+        .expect("Cache-Control", /^public\,/),
+
+        // The cookie version returns cache-control private
+        request(app)
+        .get(util.format('/%s-styles.css', stylesHash))
+        .set('Cookie', 'dummy-cookie')
+        .expect("Cache-Control", /^private\,/)
+      ]);
+    });
   });
 });
