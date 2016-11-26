@@ -55,7 +55,7 @@ exports.setOptions = function(opts) {
 /**
  * lookup for fingerprinted URLS
  *
- * { '/css/main.css': '/css/ea37c65807fe8adfbaf8bc2a2cef7a54-style.css', ... }
+ * { '/css/main.css': '/css/ea37c65807fe8adfbaf8bc2a2cef7a54-main.css', ... }
  */
 exports.urlCache = {};
 
@@ -252,9 +252,14 @@ function middleware(req, res, next) {
     , options = expiry.options;
 
   if (headerInfo) {
-    var cacheControl = (options.cacheControl === 'cookieless' && 
-      (req.get('cookie') || req.get('authorization'))) ?
-          'private' : options.cacheControl || '';
+    var cacheControl = options.cacheControl || '';
+
+    // Treat cookieless as a special value where we switch
+    // between public and private based on presence of a cookie.
+    if(cacheControl === 'cookieless') {
+      cacheControl = (req.headers.cookie || req.headers.authorization) ?
+          'private' : 'public';
+    }
 
     if (options.unconditional === 'both' || options.unconditional === 'max-age') {
       if (cacheControl.length) cacheControl += ', ';
@@ -263,17 +268,19 @@ function middleware(req, res, next) {
     if (options.unconditional === 'both' || options.unconditional === 'expires') {
       var now = new Date();
       now.setSeconds(now.getSeconds() + options.duration);
-      res.set({ 'Expires' : now.toUTCString() });
+      res.setHeader('Expires', now.toUTCString());
     }
     if (options.conditional === 'both' || options.conditional === 'etag') {
-      res.set({ 'ETag' : '"' + headerInfo.etag + '"' });
+      res.setHeader('ETag', '"' + headerInfo.etag + '"');
     }
     if (options.conditional === 'both' || options.conditional === 'last-modified') {
-      res.set({ 'Last-Modified' : headerInfo.lastModified });
+      res.setHeader('Last-Modified', headerInfo.lastModified);
     }
-    if (cacheControl.length) res.set({ 'Cache-Control' : cacheControl });
+    if (cacheControl.length) res.setHeader('Cache-Control', cacheControl);
 
-    if (fresh(req, res)) return res.send(304);
+    if (fresh(req.headers, (res._headers || {}))) {
+      return res.send(304);
+    }
 
     req.originalUrl = req.url;
     req.url = headerInfo.assetUrl;
@@ -298,7 +305,13 @@ function expiry(app, options) {
     (typeof options.loadCache === 'object' && options.loadCache.at === 'startup')) {
     preCache();
   }
-  if (options.debug) app.get('/expiry', expiryGet);
+
+  if (options.debug)
+    app.get('/expiry', expiryGet);
+
+  if(!app.locals)
+    app.locals = {};
+
   app.locals.furl = furl;
 
   return middleware;

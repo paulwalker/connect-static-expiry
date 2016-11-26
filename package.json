@@ -13,15 +13,17 @@
   },
   "author": "Paul Walker",
   "dependencies": {
-    "fresh": "0.1.0",
+    "fresh": "0.3.0",
     "findit": "0.1.2"
   },
   "devDependencies": {
-    "should": "*",
-    "mocha": "*"
-  },  
+    "connect": "3.x.x",
+    "mocha": "3.x.x",
+    "should": "11.x.x",
+    "supertest": "^2.0.1"
+  },
   "main": "index",
   "engines": {
-    "node": ">= 0.8.21"
+    "node": ">=4.x.x"
   }
 }
