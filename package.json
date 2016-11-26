@@ -17,9 +17,9 @@
     "findit": "0.1.2"
   },
   "devDependencies": {
-    "should": "*",
-    "mocha": "*"
-  },  
+    "mocha": "3.x.x",
+    "should": "*"
+  },
   "main": "index",
   "engines": {
     "node": ">=4.x.x"
