@@ -145,14 +145,6 @@ when to load the urlCache and assetCache
 the 'startup' value is necessary in a multiple server environment as it is possible for a fingerprinted request to come into a particular server before it has generated a fingerprinted URL for that asset itself.  
 (i may work a way around this in the future, not too hard to reverse engineer the asset from the fingerprinted url)
 
-### debug
-create a GET /expiry route that outputs the json of the urlCache and assetCache
-
-```js
-  debug: process.env.NODE_ENV === 'development'
-}));
-```
-
 ## Enabled vs Disabled (!development vs development)
 If both conditional and unconditional have a value of none (the default in development), static-expiry is disabled and the `furl` function will not fingerprint the url.
 
