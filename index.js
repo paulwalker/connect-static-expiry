@@ -55,7 +55,7 @@ exports.setOptions = function(opts) {
 /**
  * lookup for fingerprinted URLS
  *
- * { '/css/main.css': '/css/ea37c65807fe8adfbaf8bc2a2cef7a54-style.css', ... }
+ * { '/css/main.css': '/css/ea37c65807fe8adfbaf8bc2a2cef7a54-main.css', ... }
  */
 exports.urlCache = {};
 
