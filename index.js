@@ -29,8 +29,7 @@ var crypto = require('crypto')
       location: 'prefile',
       loadCache: isDev ? 'furl' : 'startup',
       host: null,
-      useSecond: !isDev,
-      debug: isDev
+      useSecond: !isDev
     };
 
 exports = module.exports = expiry;
@@ -131,19 +130,7 @@ function preCache() {
 };
 
 /**
- * Renders the urlCache and assetCache values
- *
- * @api private
- */
-function expiryGet(req, res) {
-  var json = { urlCache: expiry.urlCache, assetCache: expiry.assetCache }
-    , body = JSON.stringify(json, undefined, 2);
-  res.set('Content-Type', 'text/plain');
-  res.send(body);
-};
-
-/**
- * Return and stores fingerprinted Asset URL in lookup hash.  
+ * Return and stores fingerprinted Asset URL in lookup hash.
  * Also stores Asset Cache Header data and Asset URL in lookup hash for use by middleware
  *
  * @api private
@@ -305,9 +292,6 @@ function expiry(app, options) {
     (typeof options.loadCache === 'object' && options.loadCache.at === 'startup')) {
     preCache();
   }
-
-  if (options.debug)
-    app.get('/expiry', expiryGet);
 
   if(!app.locals)
     app.locals = {};
