@@ -307,7 +307,7 @@ function expiry(app, options) {
   }
 
   if (options.debug)
-    app.get('/expiry', expiryGet);
+    app.use('/expiry', expiryGet);
 
   if(!app.locals)
     app.locals = {};

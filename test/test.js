@@ -1,4 +1,5 @@
 var connect = require("connect")
+  , express = require("express")
   , request = require("supertest")
   , expiry = require('../')
   , path = require('path')
@@ -132,5 +133,23 @@ describe("middleware", function() {
         .expect("Cache-Control", /^private\,/)
       ]);
     });
+  });
+
+  describe("debug route", function() {
+    it("should render with an express or connect app", function() {
+      var expressApp = express()
+        , connectApp = connect()
+        , optionsWithDebug = Object.assign({debug: true}, options)
+        , cacheSnippet = '"/styles.css": "/be625c2b6d6f129c2f2c21a899be0dfb-styles.css"';
+
+      [expressApp, connectApp].forEach(function(app) {
+        app.use(expiry(app, optionsWithDebug));
+      });
+
+      return Promise.all([
+        request(expressApp).get('/expiry').expect(new RegExp(cacheSnippet)),
+        request(expressApp).get('/expiry').expect(new RegExp(cacheSnippet))
+      ]);
+    })
   });
 });
