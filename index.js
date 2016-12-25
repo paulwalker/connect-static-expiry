@@ -132,6 +132,7 @@ function preCache() {
 /**
  * Return and stores fingerprinted Asset URL in lookup hash.
  * Also stores Asset Cache Header data and Asset URL in lookup hash for use by middleware
+ * If the asset can't be found, the assetUrl is returned unfingerprinted, as a string.
  *
  * @api private
  */
@@ -156,7 +157,7 @@ function fingerprintAssetUrl(assetUrl) {
       if (!e.code || e.code !== 'ENOENT') {
         throw e;
       } else if (i === length - 1) {
-        return assetUrl;
+        return (typeof assetUrl === 'string') ? assetUrl : url.format(assetUrl);
       }
     }
   }
