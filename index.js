@@ -278,9 +278,11 @@ function middleware(req, res, next) {
 };
 
 /**
- * Initiates expiry and returns the middleware.
- * Creates a `furl` function on app.locals for use in templates 
- * @param {Object} app instance 
+ * Initiates expiry and returns the middleware, with the `furl` function
+ * attached on the middleware's `.furl` property. If an app is provided,
+ * furl is also attached to app.locals for use in templates.
+ *
+ * @param {Object|undefined|null} optional app instance
  * @param {Object} options for configuration
  * @return {Middleware}
  * @api public
@@ -294,10 +296,16 @@ function expiry(app, options) {
     preCache();
   }
 
-  if(!app.locals)
-    app.locals = {};
+  if(app != undefined) {
+    if(!app.locals)
+      app.locals = {};
 
-  app.locals.furl = furl;
+    app.locals.furl = furl;
+  }
+
+  // Attach furl to the middleware to expose it to the caller,
+  // regardless of whether we have an app to attach it to.
+  middleware.furl = furl;
 
   return middleware;
 };
