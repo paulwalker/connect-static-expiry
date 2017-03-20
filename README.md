@@ -2,7 +2,8 @@
 
   static-expiry provides two things:
 
-  * A helper method `furl` for your templates in order to generate fingerprinted URLs for your static assets
+  * A helper method `furl` to generate fingerprinted URLs for your static assets. This can be used in your templates.
+
   * Middleware to handle incoming requests for the fingerprinted URLs.  It handles them by rewriting the url to it's original value and setting appropriate conditional/unconditional cache headers according to your configuration.
 
 *static-expiry* does not serve static assets.  It is invoked by calling it's function that returns the middleware.  It should be placed just before the middleware you use for serving static assets.
@@ -29,7 +30,7 @@ app.use(express.static(staticDir));
 app.listen(3000);
 ```
 
-The function returned from the require statement takes two arguments, the first being the connect/express app (so that the app local can be set) and the second an object of options.
+The function returned from the require statement takes two arguments. The first can either be null or undefined, or your connect/express app. If you provide an app as the first argument, expiry sets `app.locals.furl` to the furl helper for use in your templates. The second is an object of options.
 
 ## furl helper
 Use the `furl` app local in your templates in order to generate the fingerprinted URL.
@@ -47,7 +48,7 @@ The second argument will be used when the NODE_ENV is not development.
 There are a number of options to control the fingerprinting and middleware.
 
 ```js
-app.use(expiry(app, {
+app.use(expiry(appOrNull, {
 ```
 options are passed in as the second argument
 
@@ -62,7 +63,7 @@ what unconditional cache headers to set
 
 ```js
     unconditional: 'both' // default when process.env.NODE_ENV !== 'development'
-    /* 
+    /*
     unconditional: 'max-age' // just set the Cache-Control header, max-age value
     unconditional: 'expires' // just set Expires header
     unconditional: 'none' // do not set either unconditional headers, default when in dev mode */
@@ -81,7 +82,7 @@ what conditional cache headers to set
 the value of the Cache-Control header preceding the max-age value
 
 ```js
-  cacheControl: 'cookieless', 
+  cacheControl: 'cookieless',
   // set to 'public' when there is no cookie present, 'private' if there is
 ```
 any other string value is what will be used always, typically 'public' or 'private'.  use zero length, false, or null to not have a value.  the conditional option may still mean the Cache-Control header will be present however, e.g. `Cache-Control: max-age=31556900`
@@ -117,9 +118,9 @@ the 'path' option could be problematic if you are using relative url references 
 ### host
 a domain host value to be used for the fingerprinted URLs.
 
-```js  
+```js
   host: null,
-  /* 
+  /*
     host: 'cdn.acme.com'
     // if you don't use a scheme a proto relative scheme will be used e.g. `"//cdn2.acme.com/css/main.css"`.
     host: ['cd1.acme.com', 'https://cdn2.acme.com']
@@ -136,13 +137,13 @@ when to load the urlCache and assetCache
   loadCache: 'startup' // loads the cache upon startup, the default in prod mode
   // loadCache: 'furl' // loads the cache on an asset by asset basis when furl is invoked
   // the default when not in prod mode
-  /* 
+  /*
     loadCache: { at: 'startup', callback: function(file, stat) { /foo/.test(file); } }
     you can pass an object in with a callback function in order to filter files
     by name (file) or fs.Stats (stat).  this only works with the 'startup' mode.
   */
 ```
-the 'startup' value is necessary in a multiple server environment as it is possible for a fingerprinted request to come into a particular server before it has generated a fingerprinted URL for that asset itself.  
+the 'startup' value is necessary in a multiple server environment as it is possible for a fingerprinted request to come into a particular server before it has generated a fingerprinted URL for that asset itself.
 (i may work a way around this in the future, not too hard to reverse engineer the asset from the fingerprinted url)
 
 ## Enabled vs Disabled (!development vs development)
