@@ -1,5 +1,6 @@
 var connect = require("connect")
   , request = require("supertest")
+  , should = require("should")
   , expiry = require('../')
   , path = require('path')
   , util = require('util')
@@ -11,6 +12,27 @@ var connect = require("connect")
   , stylesPath = path.join(__dirname, 'fixtures', 'styles.css')
   , stylesHash = getHash(stylesPath)
   , imagePath = path.join(__dirname, 'fixtures', 'image.jpeg');
+
+describe('expiry api', function() {
+  function makeExpiryVariants() {
+    return [
+      expiry(null, options),
+      expiry(undefined, options),
+      expiry({ get: function() {} }, options)
+    ]
+  }
+
+  it('should be callable with or without an app and not throw', function() {
+    should.doesNotThrow(makeExpiryVariants);
+  });
+
+  it('should always return a middleware function with furl attached', function() {
+    var results = makeExpiryVariants();
+    results[0].should.be.a.Function().with.length(3);
+    results[0].furl.should.be.a.Function().with.length(2);
+    results[0].should.equal(results[1]).and.equal(results[2]);
+  });
+});
 
 describe('furl', function() {
   var app;
